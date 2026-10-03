@@ -5,6 +5,8 @@ from .embeddings import CodeBERTEmbedder
 from .index import CodeVectorIndex
 from .base import BaseRetriever, DummyRetriever, RetrievedItem
 from .structural import STRUCTURAL_RELATIONSHIP_TYPES, StructuralRetriever
+from .bm25 import BM25Retriever
+from .semantic import SemanticRetriever
 
 __all__ = [
     "CodeChunk",
@@ -16,4 +18,6 @@ __all__ = [
     "DummyRetriever",
     "StructuralRetriever",
     "STRUCTURAL_RELATIONSHIP_TYPES",
+    "BM25Retriever",
+    "SemanticRetriever",
 ]

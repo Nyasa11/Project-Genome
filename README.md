@@ -237,6 +237,18 @@ ProjectGenome is built as a modular software intelligence and graph retrieval pi
   ```
 - **Tests:** `tests/knowledge_graph/test_*.py` (39/39 passing).
 
+### 3. Retrieval Subsystem (`src/retrieval/`)
+- **Purpose:** Multi-strategy code retrieval supporting lexical, semantic, and structural baselines under a common retrieval interface (`BaseRetriever`, `RetrievedItem`).
+- **Components:**
+  - `base.py`: Common retrieval contract (`BaseRetriever`, `RetrievedItem`, `DummyRetriever`).
+  - `chunker.py`: Canonical `CodeChunk` generation from repository analysis and Knowledge Graph entities.
+  - `bm25.py`: Lexical baseline (`BM25Retriever`, B1).
+  - `embeddings.py` & `index.py`: Dense 768-dimensional CodeBERT vector representations and in-memory vector index (`CodeVectorIndex`).
+  - `semantic.py`: Dense semantic retrieval (`SemanticRetriever`, B2).
+  - `structural.py`: Deterministic multi-hop Knowledge Graph traversal retriever (`StructuralRetriever`, B3).
+- **Status:** B1 (BM25), B2 (Semantic CodeBERT), and B3 (Structural) implemented and verified. B4 (Hybrid) and B5 (Graph-Aware) pending.
+- **Tests:** `tests/retrieval/test_*.py` (111/111 passing; 162/162 repository-wide passing).
+
 ---
 
 # PHASE 0 — Freeze the Project Scope
@@ -2208,10 +2220,10 @@ ProjectGenome is considered implementation-complete when:
 
 ## Retrieval
 
-- [ ] Common retrieval interface exists.
-- [ ] BM25 works.
-- [ ] Semantic CodeBERT retrieval works.
-- [ ] Structural retrieval works.
+- [x] Common retrieval interface exists.
+- [x] BM25 works.
+- [x] Semantic CodeBERT retrieval works.
+- [x] Structural retrieval works.
 - [ ] Hybrid retrieval works.
 - [ ] Graph-Aware retrieval works.
 - [ ] All methods return common result structures.

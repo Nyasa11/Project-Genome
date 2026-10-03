@@ -66,7 +66,7 @@ class CodeVectorIndex:
         Returns:
             List of (CodeChunk, float_similarity_score) tuples sorted descending by score.
         """
-        if self.embeddings is None or len(self.chunks) == 0:
+        if top_k <= 0 or self.embeddings is None or len(self.chunks) == 0:
             return []
 
         query = np.asarray(query_embedding, dtype=np.float32).ravel()
