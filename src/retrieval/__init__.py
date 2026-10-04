@@ -8,6 +8,7 @@ from .structural import STRUCTURAL_RELATIONSHIP_TYPES, StructuralRetriever
 from .bm25 import BM25Retriever
 from .semantic import SemanticRetriever
 from .hybrid import HybridRetriever
+from .graph_aware import GraphAwareRetriever, DEFAULT_GRAPH_RELATIONSHIP_TYPES
 
 __all__ = [
     "CodeChunk",
@@ -22,4 +23,6 @@ __all__ = [
     "BM25Retriever",
     "SemanticRetriever",
     "HybridRetriever",
+    "GraphAwareRetriever",
+    "DEFAULT_GRAPH_RELATIONSHIP_TYPES",
 ]
