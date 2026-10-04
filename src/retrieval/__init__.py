@@ -7,6 +7,7 @@ from .base import BaseRetriever, DummyRetriever, RetrievedItem
 from .structural import STRUCTURAL_RELATIONSHIP_TYPES, StructuralRetriever
 from .bm25 import BM25Retriever
 from .semantic import SemanticRetriever
+from .hybrid import HybridRetriever
 
 __all__ = [
     "CodeChunk",
@@ -20,4 +21,5 @@ __all__ = [
     "STRUCTURAL_RELATIONSHIP_TYPES",
     "BM25Retriever",
     "SemanticRetriever",
+    "HybridRetriever",
 ]
