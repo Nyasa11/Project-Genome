@@ -31,6 +31,9 @@ class KnowledgeGraphBuilder:
     - Zero separate Module nodes (module_name is kept on File).
     - Canonical CONTAINS hierarchy (does not require DEFINED_IN).
     - Clear rejection of conflicting data and nonexistent entity references.
+    - Explicit omission of external IMPORTS (target starts with 'module:') that reference
+      stdlib/third-party packages outside the repository; these are not repository entities
+      and must not appear as KG nodes or edges (v2.0 contract: IMPORTS is file:->file: only).
     """
 
     def __init__(self, strict_duplicates: bool = False) -> None:
@@ -115,6 +118,18 @@ class KnowledgeGraphBuilder:
 
     def _ingest_relationship(self, kg: KnowledgeGraph, rel: Relationship) -> None:
         """Ingest a single relationship, resolving or creating synthetic placeholders as needed."""
+        # --- External IMPORTS guard (v2.0 contract) ---
+        # IMPORTS edges whose target starts with 'module:' reference stdlib/third-party packages
+        # that are outside the repository and can never be File entities in this KG.
+        # Per the v2.0 schema, IMPORTS is exclusively file:->file: (inter-repository-file).
+        # Do NOT create a Module node, a synthetic node, or an UnresolvedReference for these;
+        # simply omit the edge from the KG.
+        if (
+            rel.type == RelationshipType.IMPORTS
+            or rel.type == RelationshipType.IMPORTS.value
+        ) and rel.target.startswith("module:"):
+            return
+
         # Check source node
         if not kg.has_node(rel.source):
             raise NodeNotFoundError(

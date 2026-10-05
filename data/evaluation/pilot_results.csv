@@ -1,0 +1,6 @@
+method,precision_at_k,recall_at_k,mrr,avg_retrieval_latency_ms
+BM25,0.4604,0.6913,0.7428,42.48
+Semantic + CodeBERT,0.0083,0.0486,0.0336,219.21
+Structural,0.2,0.6358,0.7067,2760.07
+Hybrid + CodeBERT,0.2708,0.5642,0.4951,166.71
+Graph-Aware + CodeBERT,0.0167,0.0556,0.0362,107.97

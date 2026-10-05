@@ -122,3 +122,46 @@ def test_builder_rejects_missing_non_unresolved_target():
     }
     with pytest.raises(NodeNotFoundError, match="Target entity 'file:missing.py' does not exist"):
         builder.build(data)
+
+
+def test_builder_skips_external_module_imports():
+    """Verify builder ingests repo-local imports, skips external module: imports, creates no module node, and produces a valid KG."""
+    from src.knowledge_graph.validation import validate_or_raise
+
+    builder = KnowledgeGraphBuilder()
+    data = {
+        "version": "1.0.0",
+        "entities": [
+            {"id": "file:a.py", "type": "File", "name": "a.py"},
+            {"id": "file:b.py", "type": "File", "name": "b.py"},
+        ],
+        "relationships": [
+            {
+                "id": "rel:imports:local",
+                "source": "file:a.py",
+                "type": "IMPORTS",
+                "target": "file:b.py",
+            },
+            {
+                "id": "rel:imports:external",
+                "source": "file:a.py",
+                "type": "IMPORTS",
+                "target": "module:os",
+            },
+        ],
+    }
+    kg = builder.build(data)
+
+    # 1. Repository-local file:a.py -> IMPORTS -> file:b.py is ingested
+    assert kg.has_relationship("file:a.py", "file:b.py", RelationshipType.IMPORTS)
+
+    # 2. External file:a.py -> IMPORTS -> module:os was skipped without NodeNotFoundError
+    rels = kg.get_all_relationships()
+    assert not any(r.get("target") == "module:os" for r in rels)
+
+    # 3. module:os does NOT become a graph node
+    assert not kg.has_node("module:os")
+    assert "module:os" not in kg.get_all_nodes()
+
+    # 4. The resulting KG remains valid
+    validate_or_raise(kg)

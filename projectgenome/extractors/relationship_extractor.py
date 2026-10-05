@@ -1,5 +1,6 @@
 """Relationship Extractor module for extracting primitive IMPORTS, INHERITS, CALLS edges and deriving optional DEPENDS_ON edges."""
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from projectgenome.models.entities import Entity, EntityType, SourceLocation
@@ -17,9 +18,11 @@ class SymbolTable:
         
         # Mapping: module_name -> relative file path (e.g. "src.services.user" -> "src/services/user.py")
         self.module_to_file: Dict[str, str] = {}
+        self.file_to_module: Dict[str, str] = {}
         for e in entities:
             if e.type == EntityType.FILE and "module_name" in e.properties:
                 self.module_to_file[e.properties["module_name"]] = e.path
+                self.file_to_module[e.path] = e.properties["module_name"]
 
         # Mapping: (file_path, symbol_name) -> Entity ID
         self.file_symbols: Dict[Tuple[str, str], str] = {}
@@ -29,6 +32,65 @@ class SymbolTable:
                 self.file_symbols[(e.path, qual_name)] = e.id
                 # Also index bare name for simple lookup
                 self.file_symbols[(e.path, e.name)] = e.id
+
+    def resolve_import_module(
+        self, source_file_path: str, module_name: str, imported_symbol: Optional[str] = None
+    ) -> Optional[str]:
+        """Resolves an imported module string to a repository-local File path.
+
+        Handles:
+        A. Exact module-name match
+        B. src/ layout fallback ('src.' + module_name)
+        C. Top-level package fallback in src/ layout
+        D. Relative imports (leading dots) relative to importing file's package
+        """
+        if not module_name:
+            return None
+
+        # D. Relative imports
+        if module_name.startswith("."):
+            source_mod = self.file_to_module.get(source_file_path, "")
+            is_init = Path(source_file_path).name == "__init__.py"
+            if is_init:
+                current_pkg = source_mod
+            else:
+                current_pkg = source_mod.rsplit(".", 1)[0] if "." in source_mod else ""
+
+            dots = len(module_name) - len(module_name.lstrip("."))
+            remainder = module_name[dots:]
+            pkg_parts = current_pkg.split(".") if current_pkg else []
+            ascend = dots - 1
+
+            if ascend <= len(pkg_parts):
+                base_parts = pkg_parts[: len(pkg_parts) - ascend] if ascend > 0 else pkg_parts
+
+                if remainder:
+                    candidate = ".".join(base_parts + remainder.split(".")) if base_parts else remainder
+                    if candidate in self.module_to_file:
+                        return self.module_to_file[candidate]
+                else:
+                    # from . import x
+                    if imported_symbol:
+                        sym_candidate = ".".join(base_parts + [imported_symbol]) if base_parts else imported_symbol
+                        if sym_candidate in self.module_to_file:
+                            return self.module_to_file[sym_candidate]
+                    pkg_candidate = ".".join(base_parts)
+                    if pkg_candidate in self.module_to_file:
+                        return self.module_to_file[pkg_candidate]
+            return None
+
+        # A. Exact module-name match
+        if module_name in self.module_to_file:
+            return self.module_to_file[module_name]
+
+        # B & C. src/ layout fallback
+        src_candidate = "src." + module_name
+        if src_candidate in self.module_to_file:
+            return self.module_to_file[src_candidate]
+
+        return None
+
+
 
 
 class RelationshipExtractor:
@@ -66,7 +128,9 @@ class RelationshipExtractor:
 
         for imp in ast_data.imports:
             module_name = imp.module
-            target_file = self.symbol_table.module_to_file.get(module_name)
+            target_file = self.symbol_table.resolve_import_module(
+                rel_file_path, module_name, imp.symbol
+            )
 
             if target_file:
                 target_id = f"file:{target_file}"
@@ -105,7 +169,13 @@ class RelationshipExtractor:
         relationships: List[Relationship] = []
 
         for cls_data in ast_data.classes:
-            class_id = f"class:{rel_file_path}:{cls_data.qualified_name}"
+            # Use the symbol table to get the correct (possibly disambiguated) ID.
+            # Falls back to plain canonical form for unique symbols, matching the
+            # entity extractor's output exactly.
+            class_id = (
+                self.symbol_table.file_symbols.get((rel_file_path, cls_data.qualified_name))
+                or f"class:{rel_file_path}:{cls_data.qualified_name}"
+            )
 
             for base in cls_data.bases:
                 raw_base = base.raw_name
@@ -152,9 +222,14 @@ class RelationshipExtractor:
 
         for func in all_functions:
             if func.is_method:
-                caller_id = f"method:{rel_file_path}:{func.qualified_name}"
+                _prefix = "method"
             else:
-                caller_id = f"func:{rel_file_path}:{func.qualified_name}"
+                _prefix = "func"
+            # Prefer the symbol-table ID so we resolve disambiguated IDs correctly.
+            caller_id = (
+                self.symbol_table.file_symbols.get((rel_file_path, func.qualified_name))
+                or f"{_prefix}:{rel_file_path}:{func.qualified_name}"
+            )
 
             for call in func.calls:
                 rel = self._create_call_relationship(rel_file_path, caller_id, call, ast_data)

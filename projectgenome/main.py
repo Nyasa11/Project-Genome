@@ -21,7 +21,7 @@ def analyze_repository(
     repo_dir: str, include_derived: bool = True
 ) -> RepositoryAnalysisOutput:
     """Analyzes a repository directory and returns normalized IR output."""
-    abs_repo_dir = os.path.abspath(repo_dir)
+    abs_repo_dir = os.path.abspath(os.path.expanduser(repo_dir))
     scanner = RepositoryScanner(abs_repo_dir)
 
     # 1. Scan filesystem layout
@@ -108,7 +108,7 @@ def main():
     output = analyze_repository(args.repo_dir, include_derived=args.include_derived)
 
     exporter = JSONExporter(output)
-    out_file = exporter.export(args.output, canonical_only=args.canonical_only)
+    out_file = exporter.export(os.path.expanduser(args.output), canonical_only=args.canonical_only)
 
     canonical_hash = output.compute_canonical_hash()
     print(f"[+] Repository analysis complete.")

@@ -53,7 +53,7 @@ class RepositoryScanner:
     """Scans a filesystem repository and extracts Repository, Directory, File entities and CONTAINS edges."""
 
     def __init__(self, root_dir: str, ignore_dirs: Set[str] = None):
-        self.root_dir = os.path.abspath(root_dir)
+        self.root_dir = os.path.abspath(os.path.expanduser(root_dir))
         self.ignore_dirs = ignore_dirs if ignore_dirs is not None else DEFAULT_IGNORE_DIRS
         self.repo_name = os.path.basename(self.root_dir)
         self.repo_id = f"repo:{self.repo_name}"
